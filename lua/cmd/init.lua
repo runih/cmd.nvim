@@ -7,7 +7,15 @@ local function expand_cmd(cmd)
 end
 
 M.setup = function (opts)
-  print("Setup CMD Opts: " .. vim.inspect(opts))
+-- Set commands
+if opts.debug then
+  print("CMD opts " .. vim.inspect(opts))
+end
+
+if opts.set_command or opts.set_command == nil then
+  vim.cmd("command! CMD lua require'cmd'.execute_current_line()")
+end
+
 end
 
 -- Execute the current line, and send the output to an other buffer

@@ -1,0 +1,12 @@
+================================================================================
+                                                                        *cmd*
+
+This plugin is for make it easier to execute a shell line within a buffer and
+send the result to a new buffer.
+
+                                                  *cmd.execute_current_line()*
+
+*execute_current_line* will send the current line to the shell and return the
+result in a new buffer.
+
+vim:tw=78:ts=8:ft=help:norl:
