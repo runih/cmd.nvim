@@ -6,69 +6,85 @@ local function expand_cmd(cmd)
   return cmd
 end
 
+local shellbuffers = {}
+
 M.setup = function (opts)
--- Set commands
-if opts.debug then
-  print("CMD opts " .. vim.inspect(opts))
+  M.opts = opts
+  -- Set commands
+  if M.opts.debug then
+    print("CMD opts " .. vim.inspect(M.opts))
+  end
+
+  if M.opts.set_command or M.opts.set_command == nil then
+    vim.cmd("command! CMD lua require'cmd'.execute_current_line()")
+  end
 end
 
-if opts.set_command or opts.set_command == nil then
-  vim.cmd("command! CMD lua require'cmd'.execute_current_line()")
-end
-
+M.execute = function (command, opts)
+  print("Executing command...")
+  local cmd = {}
+  local result = ""
+  for str in string.gmatch(command, "%S+") do
+    table.insert(cmd, str)
+  end
+  cmd = expand_cmd(cmd)
+  if opts.debug then
+    print(vim.inspect(cmd))
+  end
+  local handle = io.popen(table.concat(cmd, " ") .. " 2>&1")
+  if handle then
+    result = handle:read("*a")
+    handle:close()
+    print("Executing done!")
+  else
+    print("Executing Failed!")
+  end
+  return result
 end
 
 -- Execute the current line, and send the output to an other buffer
 M.execute_current_line = function ()
-  print("Executing command...")
+  -- Get current buffer
   local bufnr = vim.api.nvim_get_current_buf()
 
-  if not ShellBuffers then
-    ShellBuffers = {}
-  end
-
-  if not ShellBuffers[bufnr] then
-    ShellBuffers[bufnr] = {
+  -- create a output buffer for the buffer
+  if not shellbuffers[bufnr] then
+    shellbuffers[bufnr] = {
       output = vim.api.nvim_create_buf(true, false)
     }
   end
 
-  if ShellBuffers[bufnr].output then
-    ShellBuffers[bufnr].scriptwin = vim.api.nvim_get_current_win()
-    local window_exists, _ = pcall(vim.api.nvim_win_get_config, ShellBuffers[bufnr].outputwin)
+  if shellbuffers[bufnr].output then
+    -- If now window is visable create a new window
+    shellbuffers[bufnr].scriptwin = vim.api.nvim_get_current_win()
+    local window_exists, _ = pcall(vim.api.nvim_win_get_config, shellbuffers[bufnr].outputwin)
     if not window_exists then
       vim.cmd('split')
-      ShellBuffers[bufnr].outputwin = vim.api.nvim_get_current_win()
-      vim.api.nvim_win_set_buf(ShellBuffers[bufnr].outputwin, ShellBuffers[bufnr].output)
-      vim.api.nvim_set_current_win(ShellBuffers[bufnr].scriptwin)
+      shellbuffers[bufnr].outputwin = vim.api.nvim_get_current_win()
+      vim.api.nvim_win_set_buf(shellbuffers[bufnr].outputwin, shellbuffers[bufnr].output)
+      vim.api.nvim_set_current_win(shellbuffers[bufnr].scriptwin)
     end
 
+    -- Get the current line
     local lineNum = vim.api.nvim_win_get_cursor(0)[1]
+    -- Get the content for the current line
     local content = vim.api.nvim_buf_get_lines(bufnr, lineNum - 1, lineNum, false)
-    local cmd = {}
-    for str in string.gmatch(content[1], "%S+") do
-      table.insert(cmd, str)
-    end
-    cmd = expand_cmd(cmd)
-    local handle = io.popen(table.concat(cmd, " ") .. " 2>&1")
-    if handle then
-      local result = handle:read("*a")
-      local linenr = 1
-      vim.api.nvim_buf_set_lines(ShellBuffers[bufnr].output, 0, -1, false, { "" })
-      for line in result:gmatch("([^\n]*)\n?") do
-        if line and string.len(line) > 0 then
-          if linenr == 1 then
-            vim.api.nvim_buf_set_lines(ShellBuffers[bufnr].output, 0, -1, false, { line })
-          else
-            vim.api.nvim_buf_set_lines(ShellBuffers[bufnr].output, -1, -1, false, { line })
-          end
-          linenr = linenr + 1
+    -- the content is a table of rows, only pass the first one
+
+    local lines = M.execute(content[1], {debug = M.opts.debug})
+
+    local linenr = 1
+    -- Clear the buffer
+    vim.api.nvim_buf_set_lines(shellbuffers[bufnr].output, 0, -1, false, { "" })
+    for line in lines:gmatch("([^\n]*)\n?") do
+      if line and string.len(line) > 0 then
+        if linenr == 1 then
+          vim.api.nvim_buf_set_lines(shellbuffers[bufnr].output, 0, -1, false, { line })
+        else
+          vim.api.nvim_buf_set_lines(shellbuffers[bufnr].output, -1, -1, false, { line })
         end
+        linenr = linenr + 1
       end
-      handle:close()
-      print("Executing done!")
-    else
-      print("Executing Failed!")
     end
   end
 end
