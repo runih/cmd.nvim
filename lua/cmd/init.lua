@@ -50,8 +50,9 @@ M.execute_current_line = function ()
   -- create a output buffer for the buffer
   if not shellbuffers[bufnr] then
     shellbuffers[bufnr] = {
-      output = vim.api.nvim_create_buf(true, false)
+      output = vim.api.nvim_create_buf(true, true)
     }
+    vim.api.nvim_buf_set_name(shellbuffers[bufnr].output, 'CMD OUTPUT')
   end
 
   if shellbuffers[bufnr].output then
