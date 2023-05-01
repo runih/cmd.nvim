@@ -52,7 +52,7 @@ M.execute_current_line = function ()
     shellbuffers[bufnr] = {
       output = vim.api.nvim_create_buf(true, true)
     }
-    vim.api.nvim_buf_set_name(shellbuffers[bufnr].output, 'CMD OUTPUT')
+    vim.api.nvim_buf_set_name(shellbuffers[bufnr].output, '*** CMD OUTPUT FOR BUFFER ' .. bufnr .. ' ***')
   end
 
   if shellbuffers[bufnr].output then
